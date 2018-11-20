@@ -5,6 +5,7 @@
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 #include <ArduinoJson.h>
 #include <Adafruit_NeoPixel.h>
+#include "stringstream.h"
 
 // Import required libraries
 #include <ESP8266WiFi.h>
@@ -83,15 +84,22 @@ void setPixel(int x, int y, int r, int g, int b)
 
 void handleDisplay()
 {
-  
- 
+   
+   
+      
+ //   String * str = new String(server->arg("plain").c_str());
+   // StringStream strstream(*str);
      DynamicJsonBuffer buffer(1024*8);
-      JsonObject& newjson = buffer.parseObject(server->arg("plain"));
-        if(newjson == JsonObject::invalid())
+
+     
+        JsonObject& newjson = buffer.parseObject(server->arg("plain").c_str());
+
+      
+       if(newjson == JsonObject::invalid())
       {
-                  pixels.setPixelColor(1,100,0,0);
+                  pixels.setPixelColor(0,100,0,0);
                   pixels.show();
-                        server->send ( 500, "text/json",server->arg("plain"));
+                        server->send ( 500, "text/json",server->arg("plain").c_str());
 
           return;
       }
@@ -100,15 +108,39 @@ void handleDisplay()
           pixels.setPixelColor(i,0,0,0);
 
       for (auto& pixel : jsonPixels) {
-        int x = pixel["X"];
-        int y = pixel["Y"];
-        int r = pixel["R"];
-        int g = pixel["G"];
-        int b = pixel["B"];
+        
+        uint32_t c = pixel["C"];
+           uint8_t xy= (uint8_t)(c >> 24),
+            r = (uint8_t)(c >> 16),
+            g = (uint8_t)(c >>  8),
+            b = (uint8_t)c;
+  
+        uint8_t x =  (xy  & 0xF0)  >> 4;
+        uint8_t y =  (xy  & 0x0F);
       
         setPixel(x,y,r,g,b);
 
       }
+      
+/*
+     while(true)
+     {
+        JsonObject& newjson = buffer.parseObject(strstream,);
+        if(newjson == JsonObject::invalid())
+          break;
+        int x = newjson["X"];
+        int y = newjson["Y"];
+        int r = newjson["R"];
+        int g = newjson["G"];
+        int b = newjson["B"];
+      
+        setPixel(x,y,r,g,b);
+
+
+    
+     }
+
+     */
      pixels.show();
       server->send ( 200, "text/json", "{success:true}" );
      //server->send ( 200, "text/json", server->arg("plain"));
