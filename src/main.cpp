@@ -60,7 +60,30 @@ void handleRoot() {
   "    }\n"
   "  ]\n"
   "}\n\n"
-  "to /display");
+  "to /display"
+  "\n\n"
+  "Alternatively to the X,Y,R,G,B keys you can send compound pixel information.\n"
+  "This is neccessary when sending more than ~ 180 pixels in one json.\n"
+  "\n"
+  "Example:\n" 
+  "{\n"
+  "  ""pixels"": [\n"
+  "    {\n"
+  "      ""C"": ""655360""\n"
+  "    },\n"
+  "    {\n"
+  "      ""C"": ""4281479730""\n"
+  "    }\n"
+  "  ]\n"
+  "}\n"
+  "\n"
+  "the C key contains a 32 bit integer, built of X (4 Bits), Y (4Bits) and R,G,B (each 8 Bits) \n"
+  "the C=4281479730 fronm above example is in binary:\n"
+  "1111 1111 00110010 00110010 00110010\n"
+  "X=16 Y=16    R=50    G=50     b=50\n"
+
+
+  );
 }
 
 void setPixel(int x, int y, int r, int g, int b)
@@ -108,7 +131,10 @@ void handleDisplay()
           pixels.setPixelColor(i,0,0,0);
 
       for (auto& pixel : jsonPixels) {
-        
+        JsonObject& obj= pixel;
+        bool isc= obj.containsKey("C");
+        if(isc )
+        {
         uint32_t c = pixel["C"];
            uint8_t xy= (uint8_t)(c >> 24),
             r = (uint8_t)(c >> 16),
@@ -117,9 +143,20 @@ void handleDisplay()
   
         uint8_t x =  (xy  & 0xF0)  >> 4;
         uint8_t y =  (xy  & 0x0F);
+      setPixel(x,y,r,g,b);
+
+        }
+        else{
+           int x = pixel["X"];
+        int y = pixel["Y"];
+        int r = pixel["R"];
+        int g = pixel["G"];
+        int b = pixel["B"];
       
         setPixel(x,y,r,g,b);
 
+        }
+        
       }
       
 /*
