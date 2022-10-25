@@ -10,18 +10,21 @@
 // Import required libraries
 #include <ESP8266WiFi.h>
 #include <aREST.h>
+#include <U8x8lib.h>
 
 // Create aREST instance
 aREST rest = aREST();
  WiFiManager wifiManager;
 
 
-
+//U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ D2, /* data=*/ D1, /* reset=*/ U8X8_PIN_NONE); 
+U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ D2, /* data=*/ D1, /* reset=*/ U8X8_PIN_NONE); 
 #define PIN            0
 
 int numrows = 16;
 int numcols = 16;
 int pixelon = 0;
+int maxBright = 100;
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(numrows*numcols, PIN, NEO_GRB + NEO_KHZ800);
 std::unique_ptr<ESP8266WebServer> server;
 
@@ -109,16 +112,16 @@ void handleDisplay()
 {
    
    
-      
  //   String * str = new String(server->arg("plain").c_str());
    // StringStream strstream(*str);
-     DynamicJsonBuffer buffer(1024*8);
+     DynamicJsonDocument buffer(1024*8);
 
-     
-        JsonObject& newjson = buffer.parseObject(server->arg("plain").c_str());
+    auto error = deserializeJson(buffer,server->arg("plain").c_str());
 
-      
-       if(newjson == JsonObject::invalid())
+      //  JsonObject& newjson = buffer.parseObject(server->arg("plain").c_str());
+
+      if (error)
+      // if(newjson == JsonObject::invalid())
       {
                   pixels.setPixelColor(0,100,0,0);
                   pixels.show();
@@ -126,12 +129,43 @@ void handleDisplay()
 
           return;
       }
-      JsonArray& jsonPixels = newjson["pixels"];
+       JsonObject newjson =buffer.as<JsonObject>();
+      if(newjson["keep"] != "true")
+      {
+      
       for(int i = 0; i < numcols*numrows; i++)
           pixels.setPixelColor(i,0,0,0);
+      }
+      else if(newjson.containsKey("fade"))
+      {
+        
+          int fadefactor= newjson["fade"];
+          
+          for(int i = 0; i < numcols*numrows; i++)
+          {
+            uint32_t c = pixels.getPixelColor(i);
+            uint8_t r = (uint8_t)(c >> 16);
+            uint8_t g = (uint8_t)(c >> 8);
+            uint8_t b = (uint8_t)(c);
 
-      for (auto& pixel : jsonPixels) {
-        JsonObject& obj= pixel;
+            if(r <= fadefactor)
+              r = 0;
+            else
+              r-=fadefactor;
+              if(g <= fadefactor)
+              g = 0;
+            else
+              g-=fadefactor;
+              if( b<= fadefactor)
+              b = 0;
+            else
+              b-=fadefactor;
+            pixels.setPixelColor(i, pixels.Color(r,g,b));
+          }
+      }
+      JsonArray jsonPixels = newjson["pixels"];
+      for (auto pixel : jsonPixels) {
+        JsonObject obj= pixel;
         bool isc= obj.containsKey("C");
         if(isc )
         {
@@ -141,8 +175,10 @@ void handleDisplay()
             g = (uint8_t)(c >>  8),
             b = (uint8_t)c;
   
-        uint8_t x =  (xy  & 0xF0)  >> 4;
-        uint8_t y =  (xy  & 0x0F);
+        
+
+        uint8_t x =  (xy  & 0x0F);
+        uint8_t y =  (xy  & 0xF0)  >> 4;
       setPixel(x,y,r,g,b);
 
         }
@@ -185,15 +221,29 @@ void handleDisplay()
 
 void setup() {
 
+u8x8.begin();
+  u8x8.setFont(u8x8_font_chroma48medium8_r);
+
+      u8x8.drawString(0, 0, "   Welcome to");
+      u8x8.drawString(0, 1, "   LIGHTBOARD");
+
     pixels.begin();
     pixels.show();
- // system_update_cpu_freq(160);
+  system_update_cpu_freq(160);
+
+        u8x8.drawString(0, 2, "Connect to Wifi");        
+        u8x8.drawString(0, 3, "'Lightboard'");
+        u8x8.drawString(0, 4, "And use browser");        
+       // u8x8.drawString(0, 5, "192.168.4.1");
+        u8x8.drawString(0, 5, "to configure");
 
   // put your setup code here, to run once:
   wifiManager.autoConnect("LIGHTBOARD");
-  
-  server.reset(new ESP8266WebServer(WiFi.localIP(), 80));
+  WiFi.hostname("Lightboard");
 
+
+  server.reset(new ESP8266WebServer(WiFi.localIP(), 80));
+u8x8.drawString(0,7,WiFi.localIP().toString().c_str());
   server->on("/", handleRoot);
   server->on("/reset", handleReset);
 
@@ -202,6 +252,7 @@ void setup() {
 
   server->client().setNoDelay(true);
   server->begin();
+    pixels.setBrightness(maxBright);
 
 
 
