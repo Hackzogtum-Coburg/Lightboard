@@ -5,7 +5,6 @@
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 #include <ArduinoJson.h>
 #include <Adafruit_NeoPixel.h>
-#include "stringstream.h"
 
 // Import required libraries
 #include <ESP8266WiFi.h>
@@ -17,9 +16,11 @@ aREST rest = aREST();
  WiFiManager wifiManager;
 
 
+
 //U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ D2, /* data=*/ D1, /* reset=*/ U8X8_PIN_NONE); 
 U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ D2, /* data=*/ D1, /* reset=*/ U8X8_PIN_NONE); 
 #define PIN            0
+
 
 int numrows = 16;
 int numcols = 16;
@@ -84,7 +85,22 @@ void handleRoot() {
   "the C=4281479730 fronm above example is in binary:\n"
   "1111 1111 00110010 00110010 00110010\n"
   "X=16 Y=16    R=50    G=50     b=50\n"
-
+  "\n"
+  "\n"
+  "To display omething on the LCD, simpley add an lcd string to the json.\n"
+  "Example:\n"
+  "{\n"
+  "  ""lcd"": \"Hello World!\",\n "
+  "  ""pixels"": [\n"
+  "    {\n"
+  "      ""X"": ""1"",\n"
+  "      ""Y"": ""1"",\n"
+  "      ""R"": ""10"",\n"
+  "      ""G"": ""10"",\n"
+  "      ""B"": ""10""\n"
+  "    }\n"
+  "  ]\n"
+  "}\n"
 
   );
 }
@@ -129,7 +145,9 @@ void handleDisplay()
 
           return;
       }
+
        JsonObject newjson =buffer.as<JsonObject>();
+
       if(newjson["keep"] != "true")
       {
       
@@ -163,9 +181,11 @@ void handleDisplay()
             pixels.setPixelColor(i, pixels.Color(r,g,b));
           }
       }
+
       JsonArray jsonPixels = newjson["pixels"];
       for (auto pixel : jsonPixels) {
         JsonObject obj= pixel;
+
         bool isc= obj.containsKey("C");
         if(isc )
         {
@@ -194,26 +214,7 @@ void handleDisplay()
         }
         
       }
-      
-/*
-     while(true)
-     {
-        JsonObject& newjson = buffer.parseObject(strstream,);
-        if(newjson == JsonObject::invalid())
-          break;
-        int x = newjson["X"];
-        int y = newjson["Y"];
-        int r = newjson["R"];
-        int g = newjson["G"];
-        int b = newjson["B"];
-      
-        setPixel(x,y,r,g,b);
 
-
-    
-     }
-
-     */
      pixels.show();
       server->send ( 200, "text/json", "{success:true}" );
      //server->send ( 200, "text/json", server->arg("plain"));
@@ -227,8 +228,11 @@ u8x8.begin();
       u8x8.drawString(0, 0, "   Welcome to");
       u8x8.drawString(0, 1, "   LIGHTBOARD");
 
+    delay(500);
     pixels.begin();
     pixels.show();
+
+  delay(500);
   system_update_cpu_freq(160);
 
         u8x8.drawString(0, 2, "Connect to Wifi");        
@@ -237,9 +241,11 @@ u8x8.begin();
        // u8x8.drawString(0, 5, "192.168.4.1");
         u8x8.drawString(0, 5, "to configure");
 
+
   // put your setup code here, to run once:
   wifiManager.autoConnect("LIGHTBOARD");
   WiFi.hostname("Lightboard");
+
 
 
   server.reset(new ESP8266WebServer(WiFi.localIP(), 80));
